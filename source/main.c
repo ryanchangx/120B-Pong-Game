@@ -8,6 +8,7 @@
  *	code, is my own original work.
  */
 #include <avr/io.h>
+#include <stdlib.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #endif
@@ -21,9 +22,12 @@ unsigned char D[5][8] = {
                 {1,0,0,0,0,0,0,1},
                 {0,0,0,0,0,0,0,0}
             };
-
-unsigned char leftPad[5] = {0,1,1,1,0};
-unsigned char rightPad[5] = {0,1,1,1,0};
+unsigned short balliPrev = 2;
+unsigned short balljPrev = 3;
+unsigned short balliNext = 2;
+unsigned short balljNext = 3;
+// unsigned char D[5] = {0,1,1,1,0};
+// unsigned char rightPad[5] = {0,1,1,1,0};
 
 unsigned char unlocked = 0x00;
 
@@ -67,6 +71,44 @@ int p1ButtonTick(int state){
     return state;
 }
 
+enum p2controlSM{follow,away};
+int p2ButtonTick(int state){
+    if(unlocked == 0x00){
+        switch(state){
+            case follow:
+                if(balliNext == 0 || balliNext == 1){
+                    D[0][0] = D[1][0] = D[2][0] = 1;
+                    D[3][0] = D[4][0] = 0;
+                }
+                else if(balliNext == 2){
+                    D[1][0] = D[2][0] = D[3][0] = 1;
+                    D[0][0] = D[4][0] = 0;
+                }
+                else if(balliNext == 3 || balliNext == 4){
+                    D[2][0] = D[3][0] = D[4][0] = 1;
+                    D[0][0] = D[1][0] = 0;
+                }
+                break;
+            case away:
+                if(balliNext == 3 || balliNext == 4){
+                    D[0][0] = D[1][0] = D[2][0] = 1;
+                    D[3][0] = D[4][0] = 0;
+                }
+                else if(balliNext == 2){
+                    D[1][0] = D[2][0] = D[3][0] = 1;
+                    D[0][0] = D[4][0] = 0;
+                }
+                else if(balliNext == 0 || balliNext == 1){
+                    D[2][0] = D[3][0] = D[4][0] = 1;
+                    D[0][0] = D[1][0] = 0;
+                }
+                break;
+        }
+        state = (rand() % 2 == 1)? follow : away;
+    }
+    return state;
+}
+
 enum ballDirection{east,west,northeast,southeast,northwest,southwest,idle};
 enum ballSM{startball,moveball,stopball,play};
 
@@ -74,16 +116,11 @@ int ballMotionTick(int state){
     //start
     //bounce (combinational logic??) need to remember previous direction of travel
     unsigned char tmpA = ~PINA;
-    static unsigned short balliPrev = 2;
-    static unsigned short balljPrev = 3;
-    static unsigned short balliNext = 2;
-    static unsigned short balljNext = 3;
     static int currDirection = idle;
     unsigned short k;
-
     //current paddle location
     unsigned char p1[5] = {D[0][7], D[1][7], D[2][7], D[3][7], D[4][7]};
-    // unsigned char p2[5] = {D[0][0], D[1][0], D[2][0], D[3][0], D[4][0]};
+    unsigned char p2[5] = {D[0][0], D[1][0], D[2][0], D[3][0], D[4][0]};
     balliPrev = balliNext;
     balljPrev = balljNext;
     D[balliPrev][balljPrev] = 0;
@@ -186,7 +223,54 @@ int ballMotionTick(int state){
                 case west:
                     balliNext = balliPrev;
                     balljNext = balljPrev - 1;
-                    currDirection = (balljNext == 1)? east : west;
+                    // currDirection = (balljNext == 1)? east : west;
+                    if(balljNext == 1){
+                        if(p2[0] == 1){
+                            if(balliNext == 0){
+                                currDirection = southeast;
+                            }
+                            else if(balliNext == 1){
+                                currDirection = east;
+                            }
+                            else if(balliNext == 2){
+                                currDirection = southeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                        else if(p2[1] == 1){
+                            if(balliNext == 1){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 2){
+                                currDirection = east;
+                            }
+                            else if(balliNext == 3){
+                                currDirection = southeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                        else{
+                            if(balliNext == 2){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 3){
+                                currDirection = east;
+                            }
+                            else if(balliNext == 4){
+                                currDirection = northeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                    }
                     break;
                 case northeast:
                     balliNext = (balliPrev > 0)? balliPrev - 1 : 0;
@@ -250,7 +334,6 @@ int ballMotionTick(int state){
                 case southeast:
                     balliNext = balliPrev + 1;
                     balljNext = balljPrev + 1;
-
                     if(balljNext == 6){
                         if(p1[0] == 1){
                             if(balliNext == 0){
@@ -310,14 +393,55 @@ int ballMotionTick(int state){
                 case northwest:
                     balliNext = balliPrev - 1;
                     balljNext = balljPrev - 1;
-                    if(balliNext == 0){
-                        currDirection = southwest;
-                        if(balljNext == 1){
-                            currDirection = southeast;
+                    if(balljNext == 1){
+                        if(p2[0] == 1){
+                            if(balliNext == 0){
+                                currDirection = southeast;
+                            }
+                            else if(balliNext == 1){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 2){
+                                currDirection = southeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                        else if(p2[1] == 1){
+                            if(balliNext == 1){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 2){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 3){
+                                currDirection = southeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                        else{
+                            if(balliNext == 2){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 3){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 4){
+                                currDirection = northeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
                         }
                     }
-                    else if(balljNext == 1){
-                        currDirection = northeast;
+                    else if(balliNext == 0){
+                        currDirection = southwest;
                     }
                     else{
                         currDirection = northwest;
@@ -326,14 +450,55 @@ int ballMotionTick(int state){
                 case southwest:
                     balliNext = balliPrev + 1;
                     balljNext = balljPrev - 1;
-                    if(balliNext == 4){
-                        currDirection = northwest;
-                        if(balljNext == 1){
-                            currDirection = northeast;
+                    if(balljNext == 1){
+                        if(p2[0] == 1){
+                            if(balliNext == 0){
+                                currDirection = southeast;
+                            }
+                            else if(balliNext == 1){
+                                currDirection = southeast;
+                            }
+                            else if(balliNext == 2){
+                                currDirection = southeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                        else if(p2[1] == 1){
+                            if(balliNext == 1){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 2){
+                                currDirection = southeast;
+                            }
+                            else if(balliNext == 3){
+                                currDirection = southeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
+                        }
+                        else{
+                            if(balliNext == 2){
+                                currDirection = northeast;
+                            }
+                            else if(balliNext == 3){
+                                currDirection = southeast;
+                            }
+                            else if(balliNext == 4){
+                                currDirection = northeast;
+                            }
+                            else{
+                                currDirection = idle;
+                                state = stopball;
+                            }
                         }
                     }
-                    else if(balljNext == 1){
-                        currDirection = southeast;
+                    else if(balliNext == 4){
+                        currDirection = northwest;
                     }
                     else{
                         currDirection = southwest;
@@ -405,8 +570,8 @@ int main(void) {
     DDRD = 0xFF; PORTD = 0x00;
 
     /* Insert your solution below */
-    static task task1, task2, task3;
-    task *tasks[] = {&task1, &task2, &task3};
+    static task task1, task2, task3, task4;
+    task *tasks[] = {&task1, &task2, &task3, &task4};
     const unsigned short numTasks = sizeof(tasks)/sizeof(task*);    
     unsigned short i;
 
@@ -420,10 +585,15 @@ int main(void) {
     task2.elapsedTime = task2.period;
     task2.TickFct = &p1ButtonTick;
 
-    task3.state = stopball;
-    task3.period = 150;
+    task3.state = follow;
+    task3.period = 300;
     task3.elapsedTime = task3.period;
-    task3.TickFct = &ballMotionTick;
+    task3.TickFct = &p2ButtonTick;
+
+    task4.state = stopball;
+    task4.period = 150;
+    task4.elapsedTime = task4.period;
+    task4.TickFct = &ballMotionTick;
 
     unsigned long gcd = tasks[0]->period;
     for(i = 1; i < numTasks; ++i){
