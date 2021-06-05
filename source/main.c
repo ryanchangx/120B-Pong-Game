@@ -87,15 +87,15 @@ int p2ButtonTick(int state){
     if(unlocked == 0x00){
         switch(state){
             case light:
-                if(ADC <= 150){
+                if(ADC <= 50){
                     D[0][0] = D[1][0] = D[2][0] = 1;
                     D[3][0] = D[4][0] = 0;
                 }
-                else if(ADC <= 300){
+                else if(ADC <= 100){
                     D[1][0] = D[2][0] = D[3][0] = 1;
                     D[0][0] = D[4][0] = 0;
                 }
-                else if(ADC <= 450){
+                else{
                     D[2][0] = D[3][0] = D[4][0] = 1;
                     D[0][0] = D[1][0] = 0;
                 }
