@@ -18,10 +18,6 @@
 #include "timer.h"
 #include "scheduler.h"
 
-void ADC_init(){
-    ADCSRA |= (1 << ADEN) | (1 << ADSC) | (1 << ADATE);
-}
-
 unsigned char D[5][8] = {
                 {0,0,0,0,0,0,0,0},
                 {1,0,0,0,0,0,0,1},
@@ -37,14 +33,11 @@ unsigned short balljNext = 3;
 // unsigned char rightPad[5] = {0,1,1,1,0};
 
 unsigned char unlocked = 0x00;
-unsigned char dispscore = 0x00;
-unsigned char p1score = 0;
-unsigned char p2score = 0;
 
 enum p1controlSM{waitp1, down1, up1};
 int p1ButtonTick(int state){
     unsigned short i = 0;
-    unsigned char tmpA = ~PINB;
+    unsigned char tmpA = ~PINA;
     if(unlocked == 0x00){
         switch(state){
             case waitp1:
@@ -81,69 +74,51 @@ int p1ButtonTick(int state){
     return state;
 }
 
-enum p2botSM{follow,away};
-enum p2humanSM{light};
+enum p2controlSM{follow,away};
 int p2ButtonTick(int state){
     if(unlocked == 0x00){
         switch(state){
-            case light:
-                if(ADC <= 150){
+            case follow:
+                if(balliNext == 0 || balliNext == 1){
                     D[0][0] = D[1][0] = D[2][0] = 1;
                     D[3][0] = D[4][0] = 0;
                 }
-                else if(ADC <= 300){
+                else if(balliNext == 2){
                     D[1][0] = D[2][0] = D[3][0] = 1;
                     D[0][0] = D[4][0] = 0;
                 }
-                else if(ADC <= 450){
+                else if(balliNext == 3 || balliNext == 4){
+                    D[2][0] = D[3][0] = D[4][0] = 1;
+                    D[0][0] = D[1][0] = 0;
+                }
+                break;
+            case away:
+                if(balliNext == 3 || balliNext == 4){
+                    D[0][0] = D[1][0] = D[2][0] = 1;
+                    D[3][0] = D[4][0] = 0;
+                }
+                else if(balliNext == 2){
+                    D[1][0] = D[2][0] = D[3][0] = 1;
+                    D[0][0] = D[4][0] = 0;
+                }
+                else if(balliNext == 0 || balliNext == 1){
                     D[2][0] = D[3][0] = D[4][0] = 1;
                     D[0][0] = D[1][0] = 0;
                 }
                 break;
         }
-        // switch(state){
-        //     case follow:
-        //         if(balliNext == 0 || balliNext == 1){
-        //             D[0][0] = D[1][0] = D[2][0] = 1;
-        //             D[3][0] = D[4][0] = 0;
-        //         }
-        //         else if(balliNext == 2){
-        //             D[1][0] = D[2][0] = D[3][0] = 1;
-        //             D[0][0] = D[4][0] = 0;
-        //         }
-        //         else if(balliNext == 3 || balliNext == 4){
-        //             D[2][0] = D[3][0] = D[4][0] = 1;
-        //             D[0][0] = D[1][0] = 0;
-        //         }
-        //         break;
-        //     case away:
-        //         if(balliNext == 3 || balliNext == 4){
-        //             D[0][0] = D[1][0] = D[2][0] = 1;
-        //             D[3][0] = D[4][0] = 0;
-        //         }
-        //         else if(balliNext == 2){
-        //             D[1][0] = D[2][0] = D[3][0] = 1;
-        //             D[0][0] = D[4][0] = 0;
-        //         }
-        //         else if(balliNext == 0 || balliNext == 1){
-        //             D[2][0] = D[3][0] = D[4][0] = 1;
-        //             D[0][0] = D[1][0] = 0;
-        //         }
-        //         break;
-        // }
-        // state = (rand() % 2 == 1)? follow : away;
+        state = (rand() % 2 == 1)? follow : away;
     }
     return state;
 }
 
 enum ballDirection{east,west,northeast,southeast,northwest,southwest,idle};
-enum ballSM{startball,moveball,stopball,play,play1};
-unsigned char incr = 0x00;
+enum ballSM{startball,moveball,stopball,play};
 
 int ballMotionTick(int state){
     //start
     //bounce (combinational logic??) need to remember previous direction of travel
-    unsigned char tmpA = ~PINB;
+    unsigned char tmpA = ~PINA;
     static int currDirection = idle;
     unsigned short k;
     //current paddle location
@@ -177,18 +152,9 @@ int ballMotionTick(int state){
                 }
             }
             currDirection = idle;
-            state = (tmpA == 0x00)? startball : play1;
-            break;
-        case play1:
-            dispscore = 0xFF;
-            state = (tmpA == 0x00)? startball : play1;
+            state = (tmpA == 0x00)? startball : play;
             break;
         case startball:
-            if((p1score >= 3) || (p2score >= 3)){
-                p1score = 0;
-                p2score = 0;
-            }
-            dispscore = 0x00;
             state = moveball;
             currDirection = east;
             unlocked = 0x00;
@@ -229,7 +195,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                         //center
@@ -246,7 +211,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                         //lower
@@ -263,7 +227,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                     }
@@ -286,7 +249,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                         else if(p2[1] == 1){
@@ -302,7 +264,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                         else{
@@ -318,7 +279,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                     }
@@ -340,7 +300,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                         //center
@@ -357,7 +316,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                         //lower
@@ -374,7 +332,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                     }
@@ -402,7 +359,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                         //center
@@ -419,7 +375,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                         //lower
@@ -436,7 +391,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p2score;
                             }
                         }
                     }
@@ -464,7 +418,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                         else if(p2[1] == 1){
@@ -480,7 +433,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                         else{
@@ -496,7 +448,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                     }
@@ -524,7 +475,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                         else if(p2[1] == 1){
@@ -540,7 +490,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                         else{
@@ -556,7 +505,6 @@ int ballMotionTick(int state){
                             else{
                                 currDirection = idle;
                                 state = stopball;
-                                ++p1score;
                             }
                         }
                     }
@@ -583,53 +531,43 @@ enum displaySM{disp1,disp2,disp3,disp4,disp5};
 int displayMult(int state){
     int m;
     unsigned char pattern = 0x00;
-    unsigned char p1pat = 0x00;
-    unsigned char p2pat = 0x00;
     unsigned char row;
-    if(dispscore != 0xFF){
-        switch(state){
-            case disp1:
-                for(m = 0; m < 8; ++m){
-                    pattern |= (D[0][m] << (7-m));
-                }
-                row = ~(0x01);
-                state = disp2;
-                break;
-            case disp2:
-                for(m = 0; m < 8; ++m){
-                    pattern |= (D[1][m] << (7-m));
-                }
-                row = ~(0x02);
-                state = disp3;
-                break;
-            case disp3:
-                for(m = 0; m < 8; ++m){
-                    pattern |= (D[2][m] << (7-m));
-                }
-                row = ~(0x04);
-                state = disp4;
-                break;
-            case disp4:
-                for(m = 0; m < 8; ++m){
-                    pattern |= (D[3][m] << (7-m));
-                }
-                row = ~(0x08);
-                state = disp5;
-                break;
-            case disp5:
-                for(m = 0; m < 8; ++m){
-                    pattern |= (D[4][m] << (7-m));
-                }
-                row = ~(0x10);
-                state = disp1;
-                break;
-        }
-    }
-    else{
-        for(m = 0; m < p1score; ++m) p1pat |= (0x01 << m);
-        for(m = 0; m < p2score; ++m) p2pat |= (0x10 << m);
-        pattern = p1pat | p2pat;
-        row = ~(0x04);
+    switch(state){
+        case disp1:
+            for(m = 0; m < 8; ++m){
+                pattern |= (D[0][m] << (7-m));
+            }
+            row = ~(0x01);
+            state = disp2;
+            break;
+        case disp2:
+            for(m = 0; m < 8; ++m){
+                pattern |= (D[1][m] << (7-m));
+            }
+            row = ~(0x02);
+            state = disp3;
+            break;
+        case disp3:
+            for(m = 0; m < 8; ++m){
+                pattern |= (D[2][m] << (7-m));
+            }
+            row = ~(0x04);
+            state = disp4;
+            break;
+        case disp4:
+            for(m = 0; m < 8; ++m){
+                pattern |= (D[3][m] << (7-m));
+            }
+            row = ~(0x08);
+            state = disp5;
+            break;
+        case disp5:
+            for(m = 0; m < 8; ++m){
+                pattern |= (D[4][m] << (7-m));
+            }
+            row = ~(0x10);
+            state = disp1;
+            break;
     }
     PORTC = pattern;
     PORTD = row;
@@ -638,7 +576,7 @@ int displayMult(int state){
 
 int main(void) {
     /* Insert DDR and PORT initializations */
-    DDRB = 0x00; PORTB = 0xFF;
+    DDRA = 0x00; PORTA = 0xFF;
     DDRC = 0xFF; PORTC = 0x00;
     DDRD = 0xFF; PORTD = 0x00;
 
@@ -658,7 +596,7 @@ int main(void) {
     task2.elapsedTime = task2.period;
     task2.TickFct = &p1ButtonTick;
 
-    task3.state = light;
+    task3.state = follow;
     task3.period = 300;
     task3.elapsedTime = task3.period;
     task3.TickFct = &p2ButtonTick;
@@ -675,8 +613,7 @@ int main(void) {
 
     TimerSet(gcd);
     TimerOn();
-    ADC_init();
-
+    
     while(1){
         for(i = 0; i < numTasks; ++i){
             if(tasks[i]->elapsedTime >= tasks[i]->period){
