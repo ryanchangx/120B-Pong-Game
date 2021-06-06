@@ -1,11 +1,13 @@
 /*	Author: ryan
  *  Partner(s) Name: 
  *	Lab Section:
- *	Assignment: Lab #11  Exercise #1
- *	Exercise Description: pong basic reqs
+ *	Assignment: Lab #11  Exercise #2
+ *	Exercise Description: Advancements
  *
  *  AI Tracks ball half of the time
  *  Basic ball physics
+ * 
+ *  Demo Video: https://youtu.be/uor7BmrH8Nw
  * 
  *	I acknowledge all content contained herein, excluding template or example
  *	code, is my own original work.
@@ -87,15 +89,15 @@ int p2ButtonTick(int state){
     if(unlocked == 0x00){
         switch(state){
             case light:
-                if(ADC <= 150){
+                if(ADC <= 50){
                     D[0][0] = D[1][0] = D[2][0] = 1;
                     D[3][0] = D[4][0] = 0;
                 }
-                else if(ADC <= 300){
+                else if(ADC <= 100){
                     D[1][0] = D[2][0] = D[3][0] = 1;
                     D[0][0] = D[4][0] = 0;
                 }
-                else if(ADC <= 450){
+                else{
                     D[2][0] = D[3][0] = D[4][0] = 1;
                     D[0][0] = D[1][0] = 0;
                 }

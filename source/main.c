@@ -1,11 +1,13 @@
 /*	Author: ryan
  *  Partner(s) Name: 
  *	Lab Section:
- *	Assignment: Lab #11  Exercise #1
+ *	Assignment: Lab #11  Exercise #2
  *	Exercise Description: pong basic reqs
  *
  *  AI Tracks ball half of the time
  *  Basic ball physics
+ * 
+ *  Demo Video: https://youtu.be/uor7BmrH8Nw
  * 
  *	I acknowledge all content contained herein, excluding template or example
  *	code, is my own original work.
